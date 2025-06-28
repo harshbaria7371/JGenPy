@@ -1,0 +1,25 @@
+{
+  "userId": "string:uuid",
+  "username": "string:email",
+  "fullName": "string:name",
+  "age": "integer:range(min=18,max=75)",
+  "isActive": "boolean:random",
+  "lastLogin": "date:past(years=1,format=%Y-%m-%d %H:%M:%S)",
+  "profile": {
+    "bio": "string:lorem(type=sentence)",
+    "websiteUrl": "string:email",
+    "address": {
+      "street": "string:street_address",
+      "city": "string:city",
+      "zipCode": "string:regex(pattern=\\d{5}(-\\d{4})?)"
+    }
+  },
+  "tags": "array:string:word,count=5",
+  "browsingHistoryCount": "integer:range(min=0,max=1000)",
+  "trustScore": "float:random(min=0.0,max=1.0,dp=3)",
+  "lastSeenCoordinates": {
+     "latitude": "float:random(min=-90.0,max=90.0,dp=6)",
+     "longitude": "float:random(min=-180.0,max=180.0,dp=6)"
+  },
+  "orderHistory": "array:object,count=2,schema_file=product_item_schema.json"
+}
