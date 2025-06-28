@@ -1,0 +1,7 @@
+{
+  "userId": "string:uuid",
+  "firstname": "string:firstname",
+  "lastname": "string:lastname",
+  "country": "string:country",
+  "phoneNumber": "string:phone"
+}

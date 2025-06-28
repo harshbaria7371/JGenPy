@@ -1,0 +1,13 @@
+{
+  "productId": "string:uuid",
+  "productName": "string:lorem(type=text,max_nb_chars=50)",
+  "category": "string:word",
+  "quantity": "integer:range(min=1,max=10)",
+  "unitPrice": "float:random(min=5.00,max=200.00,dp=2)",
+  "purchaseDate": "date:past(years=1,format=%Y-%m-%d)",
+  "supplierInfo": {
+    "supplierName": "string:name",
+    "supplierId": "string:random(length=8)"
+  },
+  "ratings": "array:integer:range(min=1,max=5),count=3"
+}
