@@ -1,6 +1,6 @@
 # data_generator/exceptions.py
 """
-Custom exceptions for the Test Data Generator tool.
+Custom exceptions for the JGenPy.
 """
 
 class DataGeneratorError(Exception):

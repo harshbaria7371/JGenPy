@@ -5,3 +5,7 @@
 seed/
 
 .idea/
+
+*.pyc
+
+.examples/*.json
