@@ -15,9 +15,8 @@ JGenPy is Python tool generates realistic, structured test data based on a user-
 -   **Command-Line Interface**: Simple and intuitive CLI for generating data and saving it to a file or printing it to the console.
 -   **Robust Error Handling**: Provides clear error messages for invalid schemas, malformed directives, and file issues.
 
-
 ## 🚀 Getting Started
-Follow these simple steps to get AVIATEGEN up and running on your system.
+Follow these simple steps to get JGenPy up and running on your system.
 
 ### Prerequisites
 1. Python 3.9+
@@ -29,7 +28,6 @@ Follow these simple steps to get AVIATEGEN up and running on your system.
 2. Clone repository
 3. Install libraries mentioned in requirements.txt
 
----
 
 ## 🧑‍💻 Usage
 **1. Define Your JSON Schema with Directives**
