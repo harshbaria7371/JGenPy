@@ -1,7 +1,7 @@
 # data_generator/output.py
 """
 Handles the output of generated test data.
-Can output to stdout (console) or to a specified JSON file.
+It generates specified JSON file in output file path.
 """
 import json
 import sys
@@ -17,7 +17,6 @@ def write_output(data_records, output_file_path=None):
         data_records (list): A list of dictionaries, where each dictionary
                              is a generated data record.
         output_file_path (str, optional): Path to the output JSON file.
-                                          If None, output is printed to stdout.
 
     Raises:
         FileHandlingError: If there's an issue writing to the output file.
@@ -40,9 +39,7 @@ def write_output(data_records, output_file_path=None):
         # Print to stdout
         try:
             json.dump(data_records, sys.stdout, indent=2, ensure_ascii=False)
-            sys.stdout.write('\n')  # Add a newline after the JSON output
+            sys.stdout.write('\n')
         except Exception as e:
-            # This might happen if stdout is closed or similar, though less common.
-            # We can't use FileHandlingError here as it's not a typical file.
             print(f"Error writing to stdout: {e}", file=sys.stderr)
 
