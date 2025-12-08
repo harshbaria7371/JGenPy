@@ -1,0 +1,18 @@
+{
+    "last_name": "string:lorem(type=word)",
+    "first_name": "string:lorem(type=word)",
+    "birth_date": "date:past(years=15)",
+    "email": "string:email",
+    "town_of_birth": "string:lorem(type=word)",
+    "nationality": "string:lorem(type=word)",
+    "sex": "string:lorem(type=word)",
+    "cellphone_number": "string:regex(pattern=^[0-9]{10}$)",
+    "fixed_phone_number": "string:regex(pattern=^[0-9]{10}$)",
+    "fax_number": "string:regex(pattern=^[0-9]{10}$)",
+    "street_address": "string:lorem(type=word)",
+    "address_line": "string:lorem(type=word)",
+    "zip_code": "string:regex(pattern=^[0-9]{5}$)",
+    "postal_code": "string:regex(pattern=^[0-9]{5}$)",
+    "province": "string:lorem(type=word)",
+    "city": "string:lorem(type=word)"   
+}
