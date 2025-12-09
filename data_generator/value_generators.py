@@ -10,8 +10,11 @@ from datetime import datetime, timedelta, timezone
 from faker import Faker
 import exrex  # For regex string generation
 from .exceptions import GeneratorError, DirectiveError
+from .config import get_configured_locale, get_country_from_config
 
-fake = Faker()
+# Initialize Faker with the locale from .config file
+_configured_locale = get_configured_locale()
+fake = Faker(_configured_locale)
 
 def _get_required_param(params, param_name, directive_str):
     """Helper to get a required parameter or raise GeneratorError."""
@@ -71,7 +74,33 @@ def generate_string_city(**kwargs):
     return fake.city()
 
 def generate_string_country(**kwargs):
-    return fake.country()
+    try:
+        return get_country_from_config()
+    except Exception:
+        return fake.country()
+
+def generate_string_province(**kwargs):
+    """
+    Generate a province/state name.
+    Tries 'province()' first (for locales like en_CA), falls back to 'state()' (for locales like en_US, en_IN).
+    """
+    try:
+        return fake.province()
+    except AttributeError:
+        # Many locales use 'state' instead of 'province' (e.g., en_US, en_IN)
+        try:
+            return fake.state()
+        except AttributeError:
+            raise GeneratorError(
+                f"Locale '{fake.locale}' does not support province or state generation. "
+                f"Available methods may vary by locale."
+            )
+
+def generate_string_postal_code(**kwargs):
+    return fake.postcode()
+
+def generate_string_city(**kwargs):
+    return fake.city()
 
 def generate_string_random(params, directive_str, **kwargs):
     length = _get_required_param(params, "length", directive_str)
@@ -176,6 +205,14 @@ def generate_date_now(params, directive_str, **kwargs):
     except Exception as e:
         raise GeneratorError(f"Error generating current date for '{directive_str}': {e}")
 
+def generate_birth_date(params, directive_str, **kwargs):
+    """
+    Generate a birth date as a string.
+    Returns date in ISO format (YYYY-MM-DD) by default, or uses provided format.
+    """
+    date_format = _get_optional_param(params, "format", "%Y-%m-%d")
+    birth_date = fake.date_of_birth(minimum_age=18, maximum_age=70)
+    return birth_date.strftime(date_format)
 
 # --- Array Generators ---
 def generate_primitive_array(params, directive_str, base_dir, **kwargs):
@@ -228,6 +265,8 @@ GENERATOR_MAP = {
     ("string", "regex"): generate_string_regex,  # Expects pattern
     ("string", "sentence"): lambda params, **kwargs: generate_string_lorem({**params, "type": "sentence"}, **kwargs),
     ("string", "text"): lambda params, **kwargs: generate_string_lorem({**params, "type": "text"}, **kwargs),
+    ("string", "province"): generate_string_province,
+    ("string", "postal_code"): generate_string_postal_code,
 
     ("integer", "range"): generate_integer_range,  # Expects min, max
     ("integer", "random"): generate_integer_range,  # Alias
@@ -241,10 +280,19 @@ GENERATOR_MAP = {
     ("date", "future"): generate_date_future,  # Expects days, format
     ("date", "between"): generate_date_between,  # Expects start_date_str, end_date_str, format
     ("date", "now"): generate_date_now,  # Expects format
+    ("date", "birth_date"): generate_birth_date,  # Expects format
 
     ("array", "primitive_array"): generate_primitive_array,  # Expects count, element_type, element_generator_details
     ("array", "object_array"): generate_object_array,  # Expects count, parsed_sub_schema
 }
+
+# Import and register domain-specific generators
+# Vehicle generators are auto-registered on import
+try:
+    from .generators import vehicles  # noqa: F401
+except ImportError:
+    # Vehicle generators are optional
+    pass
 
 
 def dispatch_generator(parsed_directive_node, base_dir):
@@ -275,8 +323,12 @@ def dispatch_generator(parsed_directive_node, base_dir):
             # Some functions might not use all of these, which is fine with **kwargs or specific signatures.
         )
     except TypeError as te:
-        if not params and generator_name not in ["lorem", "random", "regex", "range", "past", "future", "between",
-                                                 "now", "primitive_array", "object_array"]:
+        # List of generators that require params even when empty
+        generators_requiring_params = [
+            "lorem", "random", "regex", "range", "past", "future", "between",
+            "now", "primitive_array", "object_array", "model", "year", "full"
+        ]
+        if not params and generator_name not in generators_requiring_params:
             try:
                 return generator_func()  # For simple generators like string:email, string:name
             except Exception as e_simple:
