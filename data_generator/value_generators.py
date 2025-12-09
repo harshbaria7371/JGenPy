@@ -286,14 +286,6 @@ GENERATOR_MAP = {
     ("array", "object_array"): generate_object_array,  # Expects count, parsed_sub_schema
 }
 
-# Import and register domain-specific generators
-# Vehicle generators are auto-registered on import
-try:
-    from .generators import vehicles  # noqa: F401
-except ImportError:
-    # Vehicle generators are optional
-    pass
-
 
 def dispatch_generator(parsed_directive_node, base_dir):
     """
@@ -323,12 +315,8 @@ def dispatch_generator(parsed_directive_node, base_dir):
             # Some functions might not use all of these, which is fine with **kwargs or specific signatures.
         )
     except TypeError as te:
-        # List of generators that require params even when empty
-        generators_requiring_params = [
-            "lorem", "random", "regex", "range", "past", "future", "between",
-            "now", "primitive_array", "object_array", "model", "year", "full"
-        ]
-        if not params and generator_name not in generators_requiring_params:
+        if not params and generator_name not in ["lorem", "random", "regex", "range", "past", "future", "between",
+                                                 "now", "primitive_array", "object_array"]:
             try:
                 return generator_func()  # For simple generators like string:email, string:name
             except Exception as e_simple:
