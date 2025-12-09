@@ -27,6 +27,7 @@ Follow these simple steps to get JGenPy up and running on your system.
 1. Install suitable python version (mentioned above)
 2. Clone repository
 3. Install libraries mentioned in requirements.txt
+``` pip install -r requirements.txt ```
 
 
 ## 🧑‍💻 Usage
@@ -62,6 +63,14 @@ To generate 1 record based on `employee_data_schema.json` and save it to `userda
 > python .\run_data_generator.py .\examples\user_profile_schema.json 1 --output .\seed\userdata.json
 
 ---
+
+## ☕ Support
+
+If you find this project helpful, you can support my work by buying me a coffee:
+
+<p><a href="https://www.buymeacoffee.com/bariaharshg">
+<img align="left" src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="50" width="210" alt="Buy Me A Coffee" />
+</a></p><br><br>
 
 ## 📜 License 
 JGenPy is distributed under the ISC License.
