@@ -83,15 +83,22 @@ def _parse_directive_string(directive_str, base_dir):
         array_content_type = array_parts[0]
         array_details_spec = array_parts[1]
 
-        # Extract common params like 'count' and 'schema_file'
-        params = _parse_directive_params(array_details_spec)
-        parsed_directive["params"] = params
-
-        # Determine sub-generator from the remaining part of the spec
+        # For primitive arrays, we need to separate array-level params (like count)
+        # from the element generator spec (like range(min=1,max=5))
+        # The format is: generator_spec,count=N or generator_spec
+        params = {}
         sub_generator_str = array_details_spec
-        for key in params:
-            # This removal is naive but works for simple key=val
-            sub_generator_str = re.sub(f'{key}={params[key]},?', '', sub_generator_str, 1).strip(', ')
+        
+        # Look for array-level parameters at the end (like count=3)
+        # These come after the generator spec, separated by comma
+        # We need to be careful not to split on commas inside parentheses
+        count_match = re.search(r',\s*count\s*=\s*(\d+)', array_details_spec)
+        if count_match:
+            params['count'] = int(count_match.group(1))
+            # Remove the count parameter from the string
+            sub_generator_str = array_details_spec[:count_match.start()].rstrip(', ')
+        
+        parsed_directive["params"] = params
 
         if array_content_type == "object":
             parsed_directive["generator_name"] = "object_array"
