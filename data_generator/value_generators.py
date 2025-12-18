@@ -70,6 +70,13 @@ def generate_string_word(**kwargs):
 def generate_string_street_address(**kwargs):
     return fake.street_address()
 
+def generate_string_vat_number(params, directive_str, **kwargs):   
+    length = _get_required_param(params, "length", "string:vat_number")
+    if not isinstance(length, int) or length <= 0:
+        raise GeneratorError(f"Invalid 'length' for string:vat_number: {length} in '{directive_str}'")
+    characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    return ''.join(random.choice(characters) for _ in range(length))
+
 def generate_string_city(**kwargs):
     return fake.city()
 
@@ -267,6 +274,7 @@ GENERATOR_MAP = {
     ("string", "text"): lambda params, **kwargs: generate_string_lorem({**params, "type": "text"}, **kwargs),
     ("string", "province"): generate_string_province,
     ("string", "postal_code"): generate_string_postal_code,
+    ("string", "vat_number"): generate_string_vat_number,
 
     ("integer", "range"): generate_integer_range,  # Expects min, max
     ("integer", "random"): generate_integer_range,  # Alias

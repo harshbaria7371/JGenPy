@@ -5,6 +5,7 @@
   "age": "integer:range(min=18,max=75)",
   "isActive": "boolean:random",
   "lastLogin": "date:past(years=1,format=%Y-%m-%d %H:%M:%S)",
+  "vatNumber": "string:vat_number(length=25)",
   "profile": {
     "bio": "string:lorem(type=sentence)",
     "websiteUrl": "string:email",
