@@ -1,0 +1,8 @@
+{
+  "vehicleId": "string:uuid",
+  "brand": "string:vehicle_brand_and_model",
+  "model": "string:vehicle_brand_and_model(return=model)",
+  "type": "string:static_data(data_set=vehicle_types)",
+  "color": "string:static_data(data_set=vehicle_colors)",
+  "fuelType": "string:static_data(data_set=fuel_types)"
+}

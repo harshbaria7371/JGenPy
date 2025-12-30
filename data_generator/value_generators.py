@@ -6,6 +6,7 @@ Uses the Faker library for generating realistic fake data.
 import random
 import uuid
 import os
+import threading
 from datetime import datetime, timedelta, timezone
 from faker import Faker
 import exrex  # For regex string generation
@@ -15,6 +16,9 @@ from .config import get_configured_locale, get_country_from_config
 # Initialize Faker with the locale from .config file
 _configured_locale = get_configured_locale()
 fake = Faker(_configured_locale)
+
+# Thread-local storage for maintaining state across field generations in the same record
+_thread_local = threading.local()
 
 def _get_required_param(params, param_name, directive_str):
     """Helper to get a required parameter or raise GeneratorError."""
@@ -121,6 +125,204 @@ def generate_string_regex(params, directive_str, **kwargs):
         return exrex.getone(pattern)
     except Exception as e:
         raise GeneratorError(f"Error generating string from regex pattern '{pattern}' in '{directive_str}': {e}")
+
+def _load_static_data():
+    try:
+        from .static_data import STATIC_DATA_SETS
+        return STATIC_DATA_SETS
+    except ImportError as e:
+        raise GeneratorError(f"Failed to import static data: {e}")
+
+
+def generate_string_static_data(params, directive_str, **kwargs):
+    """
+    Generate a random value from a static data set.
+    
+    Usage:
+      "string:static_data(data_set=vehicle_brands)" - Random vehicle brand
+      "string:static_data(data_set=vehicle_colors)" - Random vehicle color
+      "string:static_data(data_set=model_names,key=Toyota)" - Random model for Toyota brand
+      "string:static_data(data_set=model_names,key=vehicle_brands)" - Random model for a random brand
+    
+    Args:
+        params: Dictionary containing 'data_set' parameter and optional 'key' parameter
+        directive_str: Original directive string for error messages
+    
+    Returns:
+        Random value from the specified static data set
+    """
+    data_set_name = _get_required_param(params, "data_set", directive_str)
+    key = _get_optional_param(params, "key", None)
+    
+    # Load static data
+    static_data = _load_static_data()
+    
+    # Get the requested data set (case-insensitive lookup)
+    data_set_name_lower = data_set_name.lower().replace(' ', '_')
+    data_set = None
+    
+    for key_name in static_data.keys():
+        if key_name.lower().replace(' ', '_') == data_set_name_lower:
+            data_set = static_data[key_name]
+            break
+    
+    if data_set is None:
+        available_sets = ', '.join(static_data.keys())
+        raise GeneratorError(
+            f"Static data set '{data_set_name}' not found in '{directive_str}'. "
+            f"Available data sets: {available_sets}"
+        )
+    
+    # Handle dictionary-based data sets (like model_names)
+    if isinstance(data_set, dict):
+        if key is None:
+            # If no key provided, randomly select a key and then a value from that key's list
+            if len(data_set) == 0:
+                raise GeneratorError(
+                    f"Static data set '{data_set_name}' is empty dictionary in '{directive_str}'"
+                )
+            random_key = random.choice(list(data_set.keys()))
+            values = data_set[random_key]
+            if not isinstance(values, list) or len(values) == 0:
+                raise GeneratorError(
+                    f"Values for key '{random_key}' in '{data_set_name}' are empty or not a list in '{directive_str}'"
+                )
+            return random.choice(values)
+        else:
+            # Key provided - check if it's a reference to another data set
+            key_lower = key.lower().replace(' ', '_')
+            
+            # Check if key is a reference to another static data set (e.g., "vehicle_brands")
+            if key_lower in [k.lower().replace(' ', '_') for k in static_data.keys()]:
+                # Get a random value from the referenced data set
+                referenced_set = None
+                for k in static_data.keys():
+                    if k.lower().replace(' ', '_') == key_lower:
+                        referenced_set = static_data[k]
+                        break
+                
+                if isinstance(referenced_set, list):
+                    lookup_key = random.choice(referenced_set)
+                else:
+                    raise GeneratorError(
+                        f"Referenced data set '{key}' is not a list in '{directive_str}'"
+                    )
+            else:
+                # Use key as-is (direct brand name)
+                lookup_key = key
+            
+            # Look up the key in the dictionary
+            if lookup_key not in data_set:
+                available_keys = ', '.join(list(data_set.keys())[:10])  # Show first 10
+                raise GeneratorError(
+                    f"Key '{lookup_key}' not found in '{data_set_name}' in '{directive_str}'. "
+                    f"Available keys (sample): {available_keys}"
+                )
+            
+            values = data_set[lookup_key]
+            if not isinstance(values, list) or len(values) == 0:
+                raise GeneratorError(
+                    f"Values for key '{lookup_key}' in '{data_set_name}' are empty or not a list in '{directive_str}'"
+                )
+            
+            return random.choice(values)
+    
+    # Handle list-based data sets
+    elif isinstance(data_set, list):
+        if len(data_set) == 0:
+            raise GeneratorError(
+                f"Static data set '{data_set_name}' is empty in '{directive_str}'"
+            )
+        if key is not None:
+            raise GeneratorError(
+                f"Parameter 'key' is not supported for list-based data set '{data_set_name}' in '{directive_str}'"
+            )
+        return random.choice(data_set)
+
+
+def generate_string_vehicle_brand_and_model(params, directive_str, **kwargs):
+    """
+    Generate a vehicle brand and model together, ensuring the model matches the brand.
+    Uses thread-local storage to maintain brand state across field generations.
+    
+    Usage:
+      "string:vehicle_brand_and_model" - Returns a random brand (stores it for model lookup)
+      "string:vehicle_brand_and_model(return=model)" - Returns a model for the stored brand
+      "string:vehicle_brand_and_model(return=both)" - Returns "Brand Model" format
+      "string:vehicle_brand_and_model(return=model,key=brand)" - Uses the brand from the 'brand' field
+    
+    Args:
+        params: Dictionary with optional 'return' parameter ('brand', 'model', or 'both')
+               and optional 'key' parameter to reference another field name
+        directive_str: Original directive string for error messages
+    
+    Returns:
+        Brand, model, or "Brand Model" depending on return parameter
+    """
+    try:
+        from .static_data import VEHICLE_BRANDS, MODEL_NAMES
+    except ImportError as e:
+        raise GeneratorError(f"Failed to import vehicle data: {e}")
+    
+    return_type = _get_optional_param(params, "return", "brand")
+    key_field = _get_optional_param(params, "key", None)
+    
+    # Initialize thread-local storage if needed
+    if not hasattr(_thread_local, 'vehicle_brand_cache'):
+        _thread_local.vehicle_brand_cache = {}
+    
+    # If return_type is "brand", generate and store a brand
+    if return_type == "brand" or return_type is None:
+        brand = random.choice(VEHICLE_BRANDS)
+        # Store in cache using the field name from base_dir or a default key
+        cache_key = key_field if key_field else "default_brand"
+        _thread_local.vehicle_brand_cache[cache_key] = brand
+        return brand
+    
+    # For model generation, get the brand from cache or generate new one
+    cache_key = key_field if key_field else "default_brand"
+    
+    if return_type == "model":
+        # Try to get brand from cache
+        if hasattr(_thread_local, 'vehicle_brand_cache') and cache_key in _thread_local.vehicle_brand_cache:
+            brand = _thread_local.vehicle_brand_cache[cache_key]
+        else:
+            # If not in cache, generate a new brand
+            brand = random.choice(VEHICLE_BRANDS)
+            _thread_local.vehicle_brand_cache[cache_key] = brand
+        
+        # Get models for this brand
+        if brand not in MODEL_NAMES:
+            raise GeneratorError(
+                f"Brand '{brand}' not found in MODEL_NAMES in '{directive_str}'"
+            )
+        
+        models = MODEL_NAMES[brand]
+        if not models or len(models) == 0:
+            raise GeneratorError(
+                f"No models found for brand '{brand}' in '{directive_str}'"
+            )
+        
+        return random.choice(models)
+    
+    elif return_type == "both":
+        brand = random.choice(VEHICLE_BRANDS)
+        if brand not in MODEL_NAMES:
+            raise GeneratorError(
+                f"Brand '{brand}' not found in MODEL_NAMES in '{directive_str}'"
+            )
+        models = MODEL_NAMES[brand]
+        if not models or len(models) == 0:
+            raise GeneratorError(
+                f"No models found for brand '{brand}' in '{directive_str}'"
+            )
+        model = random.choice(models)
+        return f"{brand} {model}"
+    
+    else:
+        raise GeneratorError(
+            f"Invalid return type '{return_type}' in '{directive_str}'. Use 'brand', 'model', or 'both'"
+        )
 
 # --- Integer Generators ---
 def generate_integer_range(params, directive_str, **kwargs):
@@ -275,6 +477,10 @@ GENERATOR_MAP = {
     ("string", "province"): generate_string_province,
     ("string", "postal_code"): generate_string_postal_code,
     ("string", "vat_number"): generate_string_vat_number,
+
+    # --- Vehicle Generators ---
+    ("string", "static_data"): generate_string_static_data,  # Generic static data generator
+    ("string", "vehicle_brand_and_model"): generate_string_vehicle_brand_and_model,  # Brand and matching model
 
     ("integer", "range"): generate_integer_range,  # Expects min, max
     ("integer", "random"): generate_integer_range,  # Alias
